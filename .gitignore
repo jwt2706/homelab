@@ -1,4 +1,5 @@
 .env
 config/jellyfin/
 config/couchdb/data/
+config/beszel/
 *.log

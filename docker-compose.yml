@@ -22,29 +22,31 @@ services:
       - ./config/couchdb/local.ini:/opt/couchdb/etc/local.d/local.ini
     restart: unless-stopped
 
-  netdata:
-    image: netdata/netdata:latest
-    container_name: netdata
-    hostname: ${HOSTNAME:-homelab-pi}
-    network_mode: host   # needs host networking to see real system stats
-    pid: host
-    cap_add:
-      - SYS_PTRACE
-      - SYS_ADMIN
-    security_opt:
-      - apparmor:unconfined
-    volumes:
-      - netdataconfig:/etc/netdata
-      - netdatalib:/var/lib/netdata
-      - netdatacache:/var/cache/netdata
-      - /etc/passwd:/host/etc/passwd:ro
-      - /etc/group:/host/etc/group:ro
-      - /proc:/host/proc:ro
-      - /sys:/host/sys:ro
-      - /etc/os-release:/host/etc/os-release:ro
+  beszel:
+    image: henrygd/beszel:latest
+    container_name: beszel
     restart: unless-stopped
+    environment:
+      APP_URL: ${BESZEL_APP_URL:-http://localhost:8090}
+    ports:
+      - "8090:8090"
+    volumes:
+      - ./config/beszel/beszel_data:/beszel_data
+      - ./config/beszel/beszel_socket:/beszel_socket
 
-volumes:
-  netdataconfig:
-  netdatalib:
-  netdatacache:
+  beszel-agent:
+    image: henrygd/beszel-agent:latest
+    container_name: beszel-agent
+    restart: unless-stopped
+    network_mode: host   # needed to read real host interface/disk stats
+    depends_on:
+      - beszel
+    volumes:
+      - ./config/beszel/beszel_agent_data:/var/lib/beszel-agent
+      - ./config/beszel/beszel_socket:/beszel_socket
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      LISTEN: /beszel_socket/beszel.sock
+      HUB_URL: ${BESZEL_APP_URL:-http://localhost:8090}
+      TOKEN: ${BESZEL_TOKEN:-}
+      KEY: ${BESZEL_KEY:-}

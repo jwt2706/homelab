@@ -48,7 +48,10 @@ echo "Creating config/data directories..."
 mkdir -p \
   config/jellyfin/config \
   config/jellyfin/cache \
-  config/couchdb/data
+  config/couchdb/data \
+  config/beszel/beszel_data \
+  config/beszel/beszel_socket \
+  config/beszel/beszel_agent_data
 
 # --- 4. Pull images and start everything ---
 echo "Pulling images..."
@@ -68,7 +71,17 @@ docker compose ps
 echo
 echo "Access things at:"
 echo "  Jellyfin: http://${IP}:8096"
-echo "  Netdata:  http://${IP}:19999"
+echo "  Beszel:   http://${IP}:8090"
 echo "  CouchDB:  http://${IP}:5984/_utils"
 echo
+
+if [ -z "${BESZEL_TOKEN:-}" ] || [ -z "${BESZEL_KEY:-}" ]; then
+  echo "NOTE: Beszel's agent isn't paired yet."
+  echo "Visit the Beszel URL above, create an admin account, click 'Add System',"
+  echo "use /beszel_socket/beszel.sock as the Host/IP, then copy the Token/Key it"
+  echo "shows you into .env (BESZEL_TOKEN / BESZEL_KEY) and run:"
+  echo "  docker compose up -d beszel-agent"
+  echo
+fi
+
 echo "See README.md for Obsidian LiveSync plugin setup."
