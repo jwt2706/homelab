@@ -1,0 +1,4 @@
+.env
+config/jellyfin/
+config/couchdb/data/
+*.log
