@@ -21,3 +21,24 @@ services:
       - ./config/couchdb/data:/opt/couchdb/data
       - ./config/couchdb/local.ini:/opt/couchdb/etc/local.d/local.ini
     restart: unless-stopped
+
+  dns:
+    image: dockurr/dnsmasq
+    container_name: homelab-dns
+    restart: unless-stopped
+    network_mode: host   # binds :53 on all interfaces, including the tailscale0 one
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    volumes:
+      - ./config/dnsmasq/dnsmasq.conf:/etc/dnsmasq.conf:ro
+
+  caddy:
+    image: caddy:latest
+    container_name: caddy
+    restart: unless-stopped
+    network_mode: host   # so it can reach jellyfin/couchdb via localhost, and bind :80 directly
+    volumes:
+      - ./config/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./config/caddy/data:/data
+      - ./config/caddy/config:/config

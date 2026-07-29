@@ -48,9 +48,12 @@ echo "Creating config/data directories..."
 mkdir -p \
   config/jellyfin/config \
   config/jellyfin/cache \
-  config/couchdb/data
+  config/couchdb/data \
+  config/dnsmasq \
+  config/caddy/data \
+  config/caddy/config
 
-# Ensure local.ini exists as a real file, not a directory
+# --- 3b. Ensure local.ini exists as a real file, not a directory ---
 # If it's missing, Docker's bind mount auto-creates it as a directory instead of a
 # file, which crashes CouchDB on startup (eisdir). Self-heal that here.
 LOCAL_INI="config/couchdb/local.ini"
@@ -86,6 +89,44 @@ max_age = 3600
 EOF
 fi
 
+# --- 3c. Detect Tailscale IP and (re)generate dnsmasq.conf ---
+# Needed so *.home resolves to the right IP across your tailnet. Regenerated
+# every run in case the Tailscale IP ever changes.
+if [ -z "${TAILSCALE_IP:-}" ]; then
+  if command -v tailscale &> /dev/null; then
+    DETECTED_IP=$(tailscale ip -4 2>/dev/null || true)
+    if [ -n "$DETECTED_IP" ]; then
+      echo "TAILSCALE_IP=$DETECTED_IP" >> .env
+      TAILSCALE_IP="$DETECTED_IP"
+      echo "Detected Tailscale IP ($DETECTED_IP) and saved it to .env."
+    fi
+  fi
+fi
+
+if [ -z "${TAILSCALE_IP:-}" ]; then
+  echo "Couldn't detect a Tailscale IP — is Tailscale installed and connected? See TAILSCALE.md."
+  echo "Alternatively, set TAILSCALE_IP manually in .env, then re-run this script."
+  exit 1
+fi
+
+cat > config/dnsmasq/dnsmasq.conf << EOF
+no-resolv
+no-hosts
+address=/home/${TAILSCALE_IP}
+EOF
+
+# --- 3d. Warn if something's already bound to port 53 (commonly systemd-resolved) ---
+if command -v ss &> /dev/null; then
+  EXISTING_53=$(ss -tulnp 2>/dev/null | grep ':53 ' || true)
+  if [ -n "$EXISTING_53" ] && ! echo "$EXISTING_53" | grep -qi docker; then
+    echo
+    echo "WARNING: something is already listening on port 53 (often systemd-resolved's"
+    echo "stub listener). This will conflict with the dnsmasq container. If dnsmasq fails"
+    echo "to start, see TAILSCALE.md for how to free up port 53."
+    echo
+  fi
+fi
+
 # --- 4. Pull images and start everything ---
 echo "Pulling images..."
 docker compose pull
@@ -103,7 +144,10 @@ docker compose ps
 
 echo
 echo "Access things at:"
-echo "  Jellyfin: http://${IP}:8096"
-echo "  CouchDB:  http://${IP}:5984/_utils"
+echo "  Jellyfin: http://${IP}:8096   (or http://jellyfin.home once Split DNS is set up)"
+echo "  CouchDB:  http://${IP}:5984/_utils   (or http://couchdb.home)"
 echo
-echo "See README.md for Obsidian LiveSync plugin setup, and TAILSCALE.md for remote access."
+echo "For jellyfin.home / couchdb.home to resolve on your other devices, you need a"
+echo "one-time Tailscale admin console step (Split DNS) — see TAILSCALE.md."
+echo
+echo "See README.md for Obsidian LiveSync plugin setup."
