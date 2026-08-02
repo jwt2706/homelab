@@ -22,21 +22,17 @@ services:
       - ./config/couchdb/local.ini:/opt/couchdb/etc/local.d/local.ini
     restart: unless-stopped
 
-  cadvisor:
-    image: gcr.io/cadvisor/cadvisor:latest
-    container_name: cadvisor
-    platform: linux/arm64
+  glances:
+    image: nicolargo/glances:latest-full
+    container_name: glances
     restart: unless-stopped
+    pid: host
     privileged: true
-    ports:
-      - "8080:8080"
+    network_mode: host   # so it reports real host network stats, not just the docker bridge
+    environment:
+      - GLANCES_OPT=-w
     volumes:
-      - /:/rootfs:ro
-      - /var/run:/var/run:ro
-      - /sys:/sys:ro
-      - /sys/fs/cgroup:/sys/fs/cgroup:ro
-      - /var/lib/docker/:/var/lib/docker:ro
-      - /dev/disk/:/dev/disk:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
 
   dns:
     image: dockurr/dnsmasq

@@ -149,8 +149,8 @@ http://couchdb.home {
 	reverse_proxy localhost:5984
 }
 
-http://cadvisor.home {
-	reverse_proxy localhost:8080
+http://glances.home {
+	reverse_proxy localhost:61208
 }
 EOF
 fi
@@ -174,6 +174,4 @@ echo
 echo "Access things at:"
 echo "  Jellyfin: http://${IP}:8096   (or http://jellyfin.home once Split DNS is set up)"
 echo "  CouchDB:  http://${IP}:5984/_utils   (or http://couchdb.home)"
-echo "  cAdvisor: http://${IP}:8080   (or http://cadvisor.home)"
-echo
-echo "See README.md for *.home DNS resultion and Obsidian LiveSync plugin setup."
+echo "  Glances:  http://${IP}:61208   (or http://glances.home)"
