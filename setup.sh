@@ -104,7 +104,7 @@ if [ -z "${TAILSCALE_IP:-}" ]; then
 fi
 
 if [ -z "${TAILSCALE_IP:-}" ]; then
-  echo "Couldn't detect a Tailscale IP — is Tailscale installed and connected? See TAILSCALE.md."
+  echo "Couldn't detect a Tailscale IP — is Tailscale installed and connected? See README.md."
   echo "Alternatively, set TAILSCALE_IP manually in .env, then re-run this script."
   exit 1
 fi
@@ -122,9 +122,37 @@ if command -v ss &> /dev/null; then
     echo
     echo "WARNING: something is already listening on port 53 (often systemd-resolved's"
     echo "stub listener). This will conflict with the dnsmasq container. If dnsmasq fails"
-    echo "to start, see TAILSCALE.md for how to free up port 53."
+    echo "to start, see README.md for how to free up port 53."
     echo
   fi
+fi
+
+# --- 3e. Ensure Caddyfile exists as a real file, not a directory ---
+# Same class of bug as local.ini above: if missing, Docker's bind mount would
+# auto-create it as a directory, and Caddy fails to even start.
+CADDYFILE="config/caddy/Caddyfile"
+if [ -d "$CADDYFILE" ]; then
+  echo "Found $CADDYFILE as a directory (leftover from a bad bind mount) — removing it."
+  rmdir "$CADDYFILE" 2>/dev/null || rm -rf "$CADDYFILE"
+fi
+if [ ! -f "$CADDYFILE" ]; then
+  echo "Creating $CADDYFILE..."
+  cat > "$CADDYFILE" << 'EOF'
+# Plain HTTP — everything here only lives on your tailnet anyway, no public
+# exposure, so no cert to manage.
+
+http://jellyfin.home {
+	reverse_proxy localhost:8096
+}
+
+http://couchdb.home {
+	reverse_proxy localhost:5984
+}
+
+http://cadvisor.home {
+	reverse_proxy localhost:8080
+}
+EOF
 fi
 
 # --- 4. Pull images and start everything ---
@@ -146,8 +174,6 @@ echo
 echo "Access things at:"
 echo "  Jellyfin: http://${IP}:8096   (or http://jellyfin.home once Split DNS is set up)"
 echo "  CouchDB:  http://${IP}:5984/_utils   (or http://couchdb.home)"
+echo "  cAdvisor: http://${IP}:8080   (or http://cadvisor.home)"
 echo
-echo "For jellyfin.home / couchdb.home to resolve on your other devices, you need a"
-echo "one-time Tailscale admin console step (Split DNS) — see TAILSCALE.md."
-echo
-echo "See README.md for Obsidian LiveSync plugin setup."
+echo "See README.md for *.home DNS resultion and Obsidian LiveSync plugin setup."
