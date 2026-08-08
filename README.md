@@ -1,6 +1,6 @@
 # homelab 🏡
 
-this is a tiny self-hosted setup i made for a raspberry pi. it runs jellyfin, an obsidian livesync couchdb backend, and a few little helper services so i can reach everything from anywhere over tailscale without making it complicated.
+this is a tiny self-hosted setup i made for a raspberry pi 4 model b (8gb). it runs jellyfin, an obsidian livesync couchdb backend, and a few little helper services so i can reach everything from anywhere over tailscale without making it complicated.
 
 ## what it includes
 
